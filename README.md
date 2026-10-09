@@ -305,6 +305,20 @@ export STRIX_LLM="chatgpt/gpt-5.4"   # chatgpt/<model> runs on the subscription
 strix auth status                    # show the active sign-in, or logout to forget it
 ```
 
+#### Sign in with a Claude subscription
+
+A Claude Pro/Max/Team plan works too, through [Claude Code](https://docs.claude.com/en/docs/claude-code)
+and the Claude Agent SDK (your own sign-in, no API key):
+
+```bash
+claude auth login                    # sign in to Claude Code (or: strix auth login claude)
+export STRIX_LLM="claude/sonnet"     # claude/<model> runs on the subscription
+```
+
+> [!NOTE]
+> On this route every Strix tool is handed to Claude Code as an MCP tool and Claude
+> Code runs the agent loop. See the [Claude subscription guide](https://docs.strix.ai/llm-providers/claude-code).
+
 #### Use the managed platform: `strix cloud`
 
 Run scans on [app.strix.ai](https://app.strix.ai) from the terminal, without Docker or an LLM key:

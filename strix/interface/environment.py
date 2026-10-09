@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from strix.config import IntegrationSettings, codex, load_settings
+from strix.config import IntegrationSettings, claude_code, codex, load_settings
 from strix.interface.utils import (
     check_docker_connection,
     image_exists,
@@ -31,6 +31,35 @@ def _missing_web_search_vars(integrations: IntegrationSettings) -> list[str]:
     return ["EXA_API_KEY", "PERPLEXITY_API_KEY"]
 
 
+def _validate_claude_subscription(console: Console, model: str | None) -> None:
+    """``claude/<model>`` runs on the user's Claude Code sign-in; check it is there."""
+    if claude_code.cli_path() is None:
+        console.print(
+            f"[red]STRIX_LLM={model} runs on Claude Code, but no [cyan]claude[/] binary "
+            "was found on PATH.[/] Install Claude Code "
+            "(https://docs.claude.com/en/docs/claude-code) and sign in with "
+            "[cyan]claude auth login[/]."
+        )
+        report_error("claude_code_not_installed")
+        sys.exit(1)
+    signed_in = claude_code.is_authenticated()
+    if signed_in is False:
+        console.print(
+            f"[red]STRIX_LLM={model} uses your Claude subscription, but Claude Code is "
+            "not signed in.[/] Run [cyan]claude auth login[/] (or [cyan]strix auth login "
+            "claude[/]) first."
+        )
+        report_error("subscription_not_signed_in")
+        sys.exit(1)
+    if claude_code.uses_api_key_billing():
+        console.print(
+            "[yellow]ANTHROPIC_API_KEY is set:[/] Claude Code prefers it over your "
+            "subscription sign-in, so this run will be billed to the API key. Unset it to "
+            "run on the subscription."
+        )
+    logger.info("Environment OK (Claude subscription, signed_in=%s)", signed_in)
+
+
 def validate_environment() -> None:
     logger.info("Validating environment")
     console = Console()
@@ -48,6 +77,10 @@ def validate_environment() -> None:
             report_error("subscription_not_signed_in")
             sys.exit(1)
         logger.info("Environment OK (ChatGPT subscription)")
+        return
+
+    if claude_code.subscription_model(settings.llm.model):
+        _validate_claude_subscription(console, settings.llm.model)
         return
 
     if not settings.llm.model:

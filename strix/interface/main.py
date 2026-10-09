@@ -15,7 +15,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from strix.config import codex, load_settings, persist_current
+from strix.config import claude_code, codex, load_settings, persist_current
 from strix.core.paths import RUNS_DIR_NAME, run_dir_for
 from strix.interface.cli_args import (
     FAIL_ON_SEVERITIES,
@@ -85,9 +85,35 @@ def _exception_messages(exc: BaseException) -> tuple[str, ...]:
     return tuple(messages)
 
 
+def _claude_subscription_error_hint(exc: BaseException) -> str | None:
+    joined = " ".join(_exception_messages(exc)).lower()
+    if "not installed" in joined or "clinotfounderror" in joined or "not found at" in joined:
+        return (
+            "Claude Code is not installed or not on PATH. Install it from "
+            "https://docs.claude.com/en/docs/claude-code and run `claude auth login`."
+        )
+    if (
+        "401" in joined
+        or "unauthorized" in joined
+        or "not logged in" in joined
+        or "invalid api key" in joined
+        or "authentication_error" in joined
+    ):
+        return f"Your Claude Code sign-in has expired or is missing. {claude_code.sign_in_hint()}"
+    if "rate limit" in joined or "429" in joined or "usage limit" in joined:
+        return (
+            "Your Claude plan's usage limit was reached. Wait for the window to reset, "
+            "or resume later with `strix --resume <run>`."
+        )
+    return None
+
+
 def _subscription_error_hint(exc: BaseException) -> str | None:
-    """Return an actionable hint for a known ChatGPT-subscription error, or None."""
-    if not codex.subscription_model(load_settings().llm.model):
+    """Return an actionable hint for a known subscription-route error, or None."""
+    model = load_settings().llm.model
+    if claude_code.subscription_model(model):
+        return _claude_subscription_error_hint(exc)
+    if not codex.subscription_model(model):
         return None
     joined = " ".join(_exception_messages(exc)).lower()
     if "not supported when using codex with a chatgpt account" in joined:

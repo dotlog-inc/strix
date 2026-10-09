@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from strix.config import claude_code
+
 
 @pytest.fixture(autouse=True)
 def _isolate_mcp_config(
@@ -51,3 +53,16 @@ def _isolate_wallet_config(monkeypatch: pytest.MonkeyPatch) -> None:
     """
     for name in ("MPPX_ACCOUNT", "MPPX_STRIPE_SECRET_KEY", "MPPX_STRIPE_PAYMENT_METHOD"):
         monkeypatch.delenv(name, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _isolate_claude_code_login(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the developer's real Claude Code sign-in out of the suite.
+
+    ``strix auth status`` and the environment check for ``claude/<model>`` shell
+    out to ``claude auth status``. On a machine where Claude Code is installed
+    and signed in, that would flip "not signed in" assertions and spawn a real
+    process per test. Report "no Claude Code here" unless a test opts back in.
+    """
+    monkeypatch.setattr(claude_code, "cli_path", lambda: None)
+    monkeypatch.setattr(claude_code, "auth_status", lambda: None)

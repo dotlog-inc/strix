@@ -22,7 +22,7 @@ from openai import (
     APITimeoutError,
 )
 
-from strix.config import codex
+from strix.config import claude_code, codex
 from strix.core.hooks import (
     BudgetExceededError,
     BudgetPausedError,
@@ -104,7 +104,8 @@ def _structured_provider_refusal(result: Any) -> str | None:
 
 
 def _run_config_model(run_config: RunConfig) -> str | None:
-    return run_config.model if isinstance(run_config.model, str) else None
+    model = getattr(run_config, "model", None)
+    return model if isinstance(model, str) else None
 
 
 def _agent_instructions(agent: Any) -> str:
@@ -243,6 +244,29 @@ async def run_agent_loop(
     hooks: RunHooks[dict[str, Any]] | None = None,
 ) -> RunResultBase | None:
     agent_name = getattr(agent, "name", None)
+    model_name = _run_config_model(run_config)
+    if claude_code.subscription_model(model_name):
+        # Claude Code is its own agent loop; nothing below (Runner, replay,
+        # compaction) applies. Same contract: the coordinator carries the result.
+        from strix.core.claude_execution import run_claude_agent_loop
+
+        sandbox = getattr(run_config, "sandbox", None)
+        await run_claude_agent_loop(
+            agent=agent,
+            initial_input=initial_input,
+            context=context,
+            max_turns=max_turns,
+            coordinator=coordinator,
+            agent_id=agent_id,
+            interactive=interactive,
+            model=claude_code.subscription_model(model_name) or claude_code.DEFAULT_MODEL,
+            session=session,
+            start_parked=start_parked,
+            event_sink=event_sink,
+            sandbox_session=getattr(sandbox, "session", None),
+            run_dir=context.get("run_dir"),
+        )
+        return None
     token = request_log.bind_call_context(
         agent_id, agent_name if isinstance(agent_name, str) else None
     )

@@ -18,7 +18,7 @@ from openai import RateLimitError
 
 from strix.agents.factory import build_strix_agent, make_child_factory
 from strix.agents.prompt import render_scope_prompt, render_system_prompt
-from strix.config import codex, load_settings
+from strix.config import claude_code, codex, load_settings
 from strix.config.models import (
     StrixProvider,
     configure_sdk_api_route,
@@ -278,8 +278,11 @@ async def run_strix_scan(
         raise RuntimeError(
             "No LLM model configured. Set STRIX_LLM env or pass model= to run_strix_scan().",
         )
-    if resolved_model != (settings.llm.model or "").strip() and not codex.subscription_model(
-        resolved_model
+    claude_route = claude_code.subscription_model(resolved_model) is not None
+    if (
+        resolved_model != (settings.llm.model or "").strip()
+        and not codex.subscription_model(resolved_model)
+        and not claude_route
     ):
         configure_sdk_api_route(resolved_model, settings)
     logger.info("LLM model resolved: %s", resolved_model)
@@ -287,7 +290,8 @@ async def run_strix_scan(
     strict_tool_schemas = supports_strict_tool_schemas(resolved_model)
     if not strict_tool_schemas:
         logger.info("Sending non-strict tool schemas: %s caps strict tools", resolved_model)
-    supports_images = model_supports_images(resolved_model)
+    # Claude Code accepts images from tools regardless of LiteLLM's catalog.
+    supports_images = True if claude_route else model_supports_images(resolved_model)
     if not supports_images:
         logger.info("Leaving out image tools: %s does not accept images", resolved_model)
 
@@ -557,6 +561,8 @@ async def run_strix_scan(
             "scan_targets": build_scan_targets(scan_config),
             "max_context_images": settings.runtime.max_context_images,
             "supports_images": supports_images,
+            # The Claude route runs Claude Code with this as its working directory.
+            "run_dir": run_dir,
         }
 
         root_session = open_agent_session(root_id, agents_db)
