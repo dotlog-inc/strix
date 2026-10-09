@@ -282,9 +282,16 @@ def is_subscription_run(report_state: Any) -> bool:
     record = getattr(report_state, "run_record", None)
     if isinstance(record, dict) and record.get("auth_mode"):
         return record.get("auth_mode") == "subscription"
-    from strix.config import codex
+    from strix.config import subscription
 
-    return codex.auth_mode(load_settings().llm.model) == "subscription"
+    return subscription.auth_mode(load_settings().llm.model) == "subscription"
+
+
+def subscription_label() -> str:
+    """The plan the configured model runs on, for the stats panels."""
+    from strix.config import subscription
+
+    return subscription.subscription_label(load_settings().llm.model)
 
 
 def _int_stat(usage: dict[str, Any], key: str) -> int:
@@ -388,7 +395,7 @@ def build_live_stats_text(report_state: Any) -> Text:
     stats_text.append(str(model), style="white")
     if is_subscription_run(report_state):
         stats_text.append("  ·  ", style="dim white")
-        stats_text.append("ChatGPT subscription", style="#22c55e")
+        stats_text.append(subscription_label(), style="#22c55e")
     stats_text.append("\n")
 
     vuln_count = len(report_state.vulnerability_reports)
@@ -434,7 +441,7 @@ def build_tui_stats_text(report_state: Any) -> Text:
     subscription = is_subscription_run(report_state)
     if subscription:
         stats_text.append("\n")
-        stats_text.append("ChatGPT subscription", style="#22c55e")
+        stats_text.append(subscription_label(), style="#22c55e")
 
     usage = _llm_usage(report_state)
     if usage and _int_stat(usage, "total_tokens") > 0:

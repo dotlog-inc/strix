@@ -1,0 +1,83 @@
+---
+title: "Claude subscription"
+description: "Run Strix on your Claude Pro/Max/Team plan through Claude Code"
+---
+
+Instead of a metered Anthropic API key, Strix can run its agents on the Claude
+plan you already pay for. The `claude/<model>` route drives the
+[Claude Agent SDK](https://code.claude.com/docs/en/agent-sdk/overview), which
+launches the unmodified Claude Code binary signed in with your own account.
+Usage draws from your plan's limits; the run's cost is reported as $0.
+
+## Setup
+
+1. Install [Claude Code](https://docs.claude.com/en/docs/claude-code) and sign
+   in with your Claude account:
+
+   ```bash
+   claude auth login        # or: strix auth login claude
+   claude auth status       # should report loggedIn: true
+   ```
+
+2. Point Strix at a Claude Code model:
+
+   ```bash
+   export STRIX_LLM="claude/sonnet"   # claude/<model> runs on the subscription
+   strix --target https://example.com
+   ```
+
+   No `LLM_API_KEY` is needed. If `ANTHROPIC_API_KEY` is set in your shell,
+   Claude Code prefers it over the sign-in and bills the key instead, so unset
+   it to stay on the plan.
+
+## Available Models
+
+Any model name Claude Code accepts works after the `claude/` prefix:
+
+| Model            | Description                                   |
+| ---------------- | --------------------------------------------- |
+| `claude/sonnet`  | Current Sonnet — the recommended default      |
+| `claude/opus`    | Current Opus — deepest analysis, slowest      |
+| `claude/haiku`   | Current Haiku — fastest, for quick scans      |
+| `claude/<full id>` | A pinned release, e.g. `claude/claude-sonnet-4-6` |
+
+`STRIX_LLM="claude/"` with nothing after the slash selects `sonnet`.
+
+## How it differs from the API-key routes
+
+Claude Code is an agent loop of its own, so on this route Strix hands it the
+whole job rather than calling a model:
+
+- Every Strix tool (sandbox shell, browser, proxy, notes, reporting, the
+  multi-agent graph, ...) is exposed to Claude Code as an in-process MCP tool.
+  Claude Code's own tools (Bash, Read, Edit) are disabled: the Docker sandbox
+  stays the only execution environment.
+- The system prompt, skills, scan modes, and lifecycle (`finish_scan`,
+  `agent_finish`, `wait_for_user`) are the same as on every other route. Each
+  Strix agent, including sub-agents, gets its own Claude Code session.
+- Claude Code manages context (auto-compaction) and model-call retries itself.
+  `STRIX_REASONING_EFFORT` maps onto Claude Code's effort setting.
+- `--max-budget` has nothing to meter: the plan is not billed per token. Use
+  `--max-turns` to bound a run.
+
+## Limits and expectations
+
+- A deep, multi-agent scan uses a lot of tokens. Pro's limits run out quickly;
+  Max is the realistic plan for anything beyond a quick scan. When the plan's
+  window is exhausted the run stops with a rate-limit error; resume it later
+  with `strix --resume <run>`.
+- Claude may decline some offensive steps even on an authorized engagement.
+  Keep the scope in the instructions explicit and authorized.
+- Anthropic's terms allow using your own subscription with the Agent SDK and
+  `claude -p`. They do not allow offering your sign-in to other people, so this
+  route is for your own runs, not for a shared service. Teams and shared CI
+  should use the [Anthropic API key route](/llm-providers/anthropic).
+
+## Troubleshooting
+
+| Symptom                                   | Fix                                                        |
+| ----------------------------------------- | ---------------------------------------------------------- |
+| `no claude binary was found on PATH`      | Install Claude Code, or set `CLAUDE_CODE_PATH=/path/to/claude` |
+| `Claude Code is not signed in`            | Run `claude auth login`                                    |
+| Run is billed to an API key               | Unset `ANTHROPIC_API_KEY`                                  |
+| `strix auth status` cannot read the state | Update Claude Code (`claude auth status --json` is required) |

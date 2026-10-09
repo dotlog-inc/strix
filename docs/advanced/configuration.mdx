@@ -9,6 +9,13 @@ Configure Strix using environment variables or a config file.
 
 <ParamField path="STRIX_LLM" type="string" required>
   Model name in LiteLLM format (e.g., `openrouter/z-ai/glm-5.3`, `openai/gpt-5.4`).
+  `chatgpt/<model>` runs on a ChatGPT subscription and `claude/<model>` on a
+  Claude subscription through Claude Code; neither needs `LLM_API_KEY`.
+</ParamField>
+
+<ParamField path="CLAUDE_CODE_PATH" type="string">
+  Path to the Claude Code binary used by the `claude/<model>` route. Defaults
+  to `claude` on `PATH`, then the CLI bundled with the Claude Agent SDK.
 </ParamField>
 
 <ParamField path="LLM_API_KEY" type="string">

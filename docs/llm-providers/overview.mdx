@@ -23,6 +23,18 @@ export STRIX_LLM="openrouter/z-ai/glm-5.3"
 export LLM_API_KEY="your-api-key"
 ```
 
+## Subscriptions
+
+Two routes run on a consumer plan instead of a metered API key:
+
+```bash
+strix auth login chatgpt && export STRIX_LLM="chatgpt/gpt-5.4"   # ChatGPT Plus/Pro
+claude auth login        && export STRIX_LLM="claude/sonnet"     # Claude Pro/Max/Team
+```
+
+See the [Claude subscription guide](/llm-providers/claude-code) for how the
+`claude/` route works.
+
 ## Local Models
 
 Run models locally with [Ollama](https://ollama.com), [LM Studio](https://lmstudio.ai), or any OpenAI-compatible server:
@@ -42,6 +54,9 @@ See the [Local Models guide](/llm-providers/local) for setup instructions and re
   </Card>
   <Card title="Anthropic" href="/llm-providers/anthropic">
     Claude Opus, Sonnet, and Haiku.
+  </Card>
+  <Card title="Claude subscription" href="/llm-providers/claude-code">
+    Your Claude Pro/Max plan, through Claude Code.
   </Card>
   <Card title="OpenRouter" href="/llm-providers/openrouter">
     Access 100+ models through a single API.
